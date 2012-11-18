@@ -26,6 +26,11 @@ public interface SubRequestParameters {
     public final static String HUB_VERIFY = "hub.verify";
     
     /**
+     * REQUIRED. A hub-generated, random string that MUST be echoed by the subscriber to verify the subscription.
+     */
+    public final static String HUB_CHALLENGE = "hub.challenge";
+    
+    /**
      * OPTIONAL. Number of seconds for which the subscriber would like to have the subscription active. If not present or an empty value, the subscription will be permanent (or active until automatic refreshing removes the subscription). Hubs MAY choose to respect this value or not, depending on their own policies. This parameter MAY be present for unsubscription requests and MUST be ignored by the hub in that case.
      */
     public final static String HUB_LEASE_SECONDS = "hub.lease_seconds";

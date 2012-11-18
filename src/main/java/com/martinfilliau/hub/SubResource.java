@@ -3,9 +3,14 @@ package com.martinfilliau.hub;
 import com.martinfilliau.hub.core.ClientVerify;
 import com.martinfilliau.hub.core.SubRequestParameters;
 import com.martinfilliau.hub.core.SubscriptionMode;
+import com.sun.jersey.api.client.ClientResponse;
 import com.yammer.dropwizard.client.JerseyClient;
 import com.yammer.dropwizard.logging.Log;
 import com.yammer.metrics.annotation.Timed;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.FormParam;
@@ -14,6 +19,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.commons.validator.routines.UrlValidator;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.message.BasicNameValuePair;
 import redis.clients.jedis.Jedis;
 
 /**
@@ -90,7 +98,7 @@ public class SubResource {
         // Do subscribe or unsubscribe action
         
         if (mode.equals(SubscriptionMode.SUBSCRIBE)) {
-            return doSubscription(callback, topic, verify, lease);
+            return doSubscription(callback, mode, topic, verify, lease);
         } else if (mode.equals(SubscriptionMode.UNSUBSCRIBE)) {
             return doUnsubscription(callback, topic, verify);
         }
@@ -98,8 +106,33 @@ public class SubResource {
        return Response.status(400).entity("400 Bad Request").build();
     }
 
-    public Response doSubscription(String callback, String topic, ClientVerify verify, Integer lease) {
-        return Response.noContent().build();
+    public Response doSubscription(String callback, SubscriptionMode mode, String topic, ClientVerify verify, Integer lease) {
+        // check callback URL
+        
+        UUID challenge = UUID.randomUUID();
+        
+        List<NameValuePair> args = new ArrayList<NameValuePair>();
+        args.add(new BasicNameValuePair(SubRequestParameters.HUB_MODE, mode.name().toLowerCase()));
+	args.add(new BasicNameValuePair(SubRequestParameters.HUB_TOPIC, topic));
+	args.add(new BasicNameValuePair(SubRequestParameters.HUB_CHALLENGE, challenge.toString()));
+	args.add(new BasicNameValuePair(SubRequestParameters.HUB_LEASE_SECONDS, lease.toString()));
+        ClientResponse response = null;
+        try {
+            response = jersey.post(new URI(callback), MediaType.APPLICATION_FORM_URLENCODED_TYPE, new UrlEncodedFormEntity(args), null);
+        } catch (Exception ex) {
+            LOG.error(ex, "Unsupported encoding", args);
+        }
+        
+        if (response.getStatus() == 200 && response.getEntity(String.class).equals(challenge.toString())) {
+            // callback verified
+            jedis.zadd("topic_" + topic, 0, callback);
+            return Response.noContent().build();
+        } else {
+            // callback not verified
+            return Response.status(400)
+                    .entity("Subscriber returned HTTP " + response.getStatus() + ", " + response.getEntity(String.class))
+                    .build();
+        }
     }
     
     public Response doUnsubscription(String callback, String topic, ClientVerify verify) {
