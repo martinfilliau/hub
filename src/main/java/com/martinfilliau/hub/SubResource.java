@@ -1,21 +1,19 @@
 package com.martinfilliau.hub;
 
-import com.google.common.base.Optional;
 import com.martinfilliau.hub.core.ClientVerify;
 import com.martinfilliau.hub.core.SubRequestParameters;
 import com.martinfilliau.hub.core.SubscriptionMode;
+import com.yammer.dropwizard.client.JerseyClient;
 import com.yammer.dropwizard.logging.Log;
 import com.yammer.metrics.annotation.Timed;
-import java.util.concurrent.atomic.AtomicLong;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.FormParam;
-import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import org.apache.commons.validator.routines.UrlValidator;
 import redis.clients.jedis.Jedis;
 
 /**
@@ -29,9 +27,11 @@ public class SubResource {
     private static final Log LOG = Log.forClass(SubResource.class);
 
     private final Jedis jedis;
-
-    public SubResource(Jedis jedis) {
+    private final JerseyClient jersey;
+    
+    public SubResource(Jedis jedis, JerseyClient jersey) {
         this.jedis = jedis;
+        this.jersey = jersey;
     }
     
     /**
@@ -54,21 +54,18 @@ public class SubResource {
                                         @DefaultValue("0") @FormParam(SubRequestParameters.HUB_LEASE_SECONDS) Integer lease,
                                         @DefaultValue("") @FormParam(SubRequestParameters.HUB_SECRET) String secret,
                                         @DefaultValue("") @FormParam(SubRequestParameters.HUB_VERIFY) String verify_token) {
+        // Validations
         
-        ClientVerify verify;
-        try {
-            verify = Enum.valueOf(ClientVerify.class, verifyString.toUpperCase());
-        } catch (IllegalArgumentException iae) {
-            return Response.status(400).entity("400 Bad Request\n'hub.verify' expects 'sync' or 'async'.").build();
+        String[] schemes = {"http","https"};
+        UrlValidator urlValidator = new UrlValidator(schemes);
+
+        if(!urlValidator.isValid(callback)) {
+            return Response.status(400).entity("400 Bad Request\n'hub.callback' is not a valid URL.").build();
         }
         
-        String subscribers = jedis.get(topic);
-        
-        if(subscribers == null) {
-            return Response.status(400).entity("400 Bad Request\nhub doesn't store topic " + topic).build();
+        if(!urlValidator.isValid(topic)) {
+            return Response.status(400).entity("400 Bad Request\n'hub.topic' is not a valid URL.").build();            
         }
-        
-        // check if feed exists
         
         SubscriptionMode mode;
         try {
@@ -77,17 +74,36 @@ public class SubResource {
             return Response.status(400).entity("400 Bad Request\n'hub.mode' expects 'subscribe' or 'unsubscribe'.").build();
         }
         
-        // call doSubscription or doUnsubscription depending on mode
+        String feed = jedis.get("topic_" + topic);
         
-        return Response.noContent().build();
+        if(feed == null) {
+            return Response.status(400).entity("400 Bad Request\nhub doesn't store topic " + topic).build();
+        }
+        
+        ClientVerify verify;
+        try {
+            verify = Enum.valueOf(ClientVerify.class, verifyString.toUpperCase());
+        } catch (IllegalArgumentException iae) {
+            return Response.status(400).entity("400 Bad Request\n'hub.verify' expects 'sync' or 'async'.").build();
+        }
+        
+        // Do subscribe or unsubscribe action
+        
+        if (mode.equals(SubscriptionMode.SUBSCRIBE)) {
+            return doSubscription(callback, topic, verify, lease);
+        } else if (mode.equals(SubscriptionMode.UNSUBSCRIBE)) {
+            return doUnsubscription(callback, topic, verify);
+        }
+        
+       return Response.status(400).entity("400 Bad Request").build();
     }
 
-    public void doSubscription() {
-        
+    public Response doSubscription(String callback, String topic, ClientVerify verify, Integer lease) {
+        return Response.noContent().build();
     }
     
-    public void doUnsubscription() {
-        
+    public Response doUnsubscription(String callback, String topic, ClientVerify verify) {
+        return Response.noContent().build();
     }
     
 }

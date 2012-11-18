@@ -4,3 +4,10 @@ logging:
   console:
     enabled: true
     threshold: ALL
+httpClient:
+  timeout: 3s # timeout after 1s while connecting, reading, or writing
+  timeToLive: 5s # keep connections open for 10 minutes
+  cookiesEnabled: false # don't track cookies
+  gzipEnabled: true # allow for gzipped request and response entities
+  minThreads: 1
+  maxThreads: 128 # thread pool for JerseyClient's async requests
