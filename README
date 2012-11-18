@@ -1,0 +1,14 @@
+Hub
+===
+
+PubSubHubbub hub (spec 0.3), written in Java and uses Dropwizard and Redis.
+
+Building
+--------
+
+Run `mvn clean install`.
+
+Running
+-------
+
+From the root of the project, you can run `java -jar target/hub-1.0-SNAPSHOT.jar server src/main/resources/configuration.yml`.
