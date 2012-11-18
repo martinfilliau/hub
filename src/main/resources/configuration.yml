@@ -1,1 +1,6 @@
 redisServer: localhost
+logging:
+  level: DEBUG
+  console:
+    enabled: true
+    threshold: ALL

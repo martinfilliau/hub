@@ -4,6 +4,7 @@ import com.google.common.base.Optional;
 import com.martinfilliau.hub.core.ClientVerify;
 import com.martinfilliau.hub.core.SubRequestParameters;
 import com.martinfilliau.hub.core.SubscriptionMode;
+import com.yammer.dropwizard.logging.Log;
 import com.yammer.metrics.annotation.Timed;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.ws.rs.Consumes;
@@ -24,7 +25,9 @@ import redis.clients.jedis.Jedis;
 @Path("/subscribe")
 @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
 public class SubResource {
-        
+
+    private static final Log LOG = Log.forClass(SubResource.class);
+
     private final Jedis jedis;
 
     public SubResource(Jedis jedis) {
@@ -57,6 +60,12 @@ public class SubResource {
             verify = Enum.valueOf(ClientVerify.class, verifyString.toUpperCase());
         } catch (IllegalArgumentException iae) {
             return Response.status(400).entity("400 Bad Request\n'hub.verify' expects 'sync' or 'async'.").build();
+        }
+        
+        String subscribers = jedis.get(topic);
+        
+        if(subscribers == null) {
+            return Response.status(400).entity("400 Bad Request\nhub doesn't store topic " + topic).build();
         }
         
         // check if feed exists
