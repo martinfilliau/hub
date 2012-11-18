@@ -18,7 +18,7 @@ public class RedisHealthCheck extends HealthCheck {
     
     @Override
     protected Result check() throws Exception {
-        if(jedis.isConnected()) {
+        if(jedis.isConnected() && "PONG".equals(jedis.ping())) {
             return Result.healthy();
         } else {
             return Result.unhealthy("Not connected to Redis.");
