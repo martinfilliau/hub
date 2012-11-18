@@ -2,7 +2,6 @@ package com.martinfilliau.hub.data;
 
 import com.yammer.dropwizard.lifecycle.Managed;
 import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
 
 /**
  *
