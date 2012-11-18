@@ -12,10 +12,10 @@ import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import redis.clients.jedis.Jedis;
 
 /**
  * Resource when a Subscriber Sends a Subscription Request
@@ -25,21 +25,10 @@ import javax.ws.rs.core.Response;
 @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
 public class SubResource {
         
-    private final String template;
-    private final String defaultName;
-    private final AtomicLong counter;
+    private final Jedis jedis;
 
-    public SubResource(String template, String defaultName) {
-        this.template = template;
-        this.defaultName = defaultName;
-        this.counter = new AtomicLong();
-    }
-
-    @GET
-    @Timed
-    public Subscription sayHello(@QueryParam("name") Optional<String> name) {
-        return new Subscription(counter.incrementAndGet(),
-                String.format(template, name.or(defaultName)));
+    public SubResource(Jedis jedis) {
+        this.jedis = jedis;
     }
     
     /**
@@ -55,7 +44,7 @@ public class SubResource {
      */
     @POST
     @Timed
-    public Response doSubscription(@FormParam(SubRequestParameters.HUB_CALLBACK) String callback,
+    public Response subscribeCall(@FormParam(SubRequestParameters.HUB_CALLBACK) String callback,
                                         @FormParam(SubRequestParameters.HUB_MODE) String modeString,
                                         @FormParam(SubRequestParameters.HUB_TOPIC) String topic,
                                         @FormParam(SubRequestParameters.HUB_VERIFY) String verifyString,
@@ -69,7 +58,9 @@ public class SubResource {
         } catch (IllegalArgumentException iae) {
             return Response.status(400).entity("400 Bad Request\n'hub.verify' expects 'sync' or 'async'.").build();
         }
-             
+        
+        // check if feed exists
+        
         SubscriptionMode mode;
         try {
             mode = Enum.valueOf(SubscriptionMode.class, modeString.toUpperCase());
@@ -77,9 +68,17 @@ public class SubResource {
             return Response.status(400).entity("400 Bad Request\n'hub.mode' expects 'subscribe' or 'unsubscribe'.").build();
         }
         
-        // check if feed exists
+        // call doSubscription or doUnsubscription depending on mode
         
         return Response.noContent().build();
     }
 
+    public void doSubscription() {
+        
+    }
+    
+    public void doUnsubscription() {
+        
+    }
+    
 }

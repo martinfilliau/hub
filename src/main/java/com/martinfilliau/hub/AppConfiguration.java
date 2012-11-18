@@ -11,18 +11,9 @@ import org.hibernate.validator.constraints.NotEmpty;
 public class AppConfiguration extends Configuration {
     @NotEmpty
     @JsonProperty
-    private String template;
+    private String redisServer;
 
-    @NotEmpty
-    @JsonProperty
-    private String defaultName = "Stranger";
-
-    public String getTemplate() {
-        return template;
+    public String getRedisServer() {
+        return redisServer;
     }
-
-    public String getDefaultName() {
-        return defaultName;
-    }
-   
 }
